@@ -1,0 +1,156 @@
+---
+title: "Podosenin-Proposal"
+author: "Ursula Podosenin"
+date: "2024-04-04"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Project Proposal
+
+Dataset: Patient-level Clinical Drug Trial Data
+https://www.kaggle.com/datasets/dillonmyrick/bells-palsy-clinical-trial
+
+## Research Question?
+
+Are gender and age predictors of recovery regardless of treatment?
+
+## What are the cases, and how many are there?
+
+Each case represents a patient. There are 494 cases
+
+## Describe the method of data collection.
+
+The data is housed on Kaggle and adapted from a clinical trial for Bell's Palsy: https://www.nejm.org/doi/full/10.1056/nejmoa072006#. The data collected studies the effect of two drugs, Prednisolone or Acyclovir in the early treatment of Bell’s Palsy 
+
+## What type of study is this (observational/experiment)?
+
+This is an experimental study with a medical intervention in the form of medication. 
+
+## Data Source:
+Found on Kaggle and adapted from a clinical trial for Bell's Palsy: https://www.nejm.org/doi/full/10.1056/nejmoa072006#. The data collected studies the effect of two drugs, Prednisolone or Acyclovir in the early treatment of Bell’s Palsy 
+
+## What is the response variable, and what type is it (numerical/categorical)?
+
+The response variable is the outcome, which is ordinal
+
+## What is the explanatory variable, and what type is it (numerical/categorical)?
+
+The explanatory variables are the gender and age of the participants in the control group, where gender is categorical and age is numerical.   
+
+### Relevant summary statistics
+```{r}
+
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+```
+
+```{r}
+
+# Reading the url file and creating a data frame
+url= "https://raw.githubusercontent.com/ursulapodosenin/Projects/main/Bells%20Palsy%20Clinical%20Trial.csv"
+BellsPalsyData<-as.data.frame(read.csv(url))
+glimpse(BellsPalsyData)
+
+# Creating a function that provides the value of the mode
+Mode <- function(x) {
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+# Calculating the total number of males and females in the study 
+total_females<-sum(BellsPalsyData=="Female")
+total_males<-sum(BellsPalsyData=="Male")
+total_females
+total_males
+
+# Calculating the total number of participants in the control group and comparing it to the total number of participants
+control_total<-sum(BellsPalsyData$Treatment.Group== "Placebo–Placebo")
+control_total
+noncontrol_total<-sum(BellsPalsyData$Treatment.Group!= "Placebo–Placebo")
+noncontrol_total
+control_ratio<-(control_total/noncontrol_total)
+control_ratio
+
+# Obtaining summary statistics regarding age, grouped by gender
+summ_stats_by_sex<-
+  BellsPalsyData|>
+    group_by(Sex)|>
+     summarise(mean_age= mean(Age),
+              median_age= median(Age),
+              mode_age= Mode(Age),
+              min_age= min(Age),
+              max_age= max(Age),
+              sd_age= sd(Age) )
+summ_stats_by_sex
+
+# Creating an additional age group column that groups all participants into an age category 
+BellsPalsyData['agegroup'] = case_when(BellsPalsyData$Age >= 10  & BellsPalsyData$Age <= 19 ~ '10-19',
+                                             BellsPalsyData$Age >= 20  & BellsPalsyData$Age <= 29 ~ '20-29',
+                                             BellsPalsyData$Age >= 30  & BellsPalsyData$Age <= 39 ~ '30-39',
+                                             BellsPalsyData$Age >= 20  & BellsPalsyData$Age <= 29 ~ '20-29',
+                                             BellsPalsyData$Age >= 30  & BellsPalsyData$Age <= 39 ~ '30-39',
+                                             BellsPalsyData$Age >= 40  & BellsPalsyData$Age <= 49 ~ '40-49',
+                                             BellsPalsyData$Age >= 50  & BellsPalsyData$Age <= 59 ~ '50-59',
+                                             BellsPalsyData$Age >= 60  & BellsPalsyData$Age <= 69 ~ '60-69',
+                                             BellsPalsyData$Age >= 70  & BellsPalsyData$Age <= 79 ~ '70-79',
+                                             BellsPalsyData$Age >= 80  & BellsPalsyData$Age <= 89 ~ '80-89',
+                                             BellsPalsyData$Age >= 90  & BellsPalsyData$Age <= 99 ~ '90-99')
+
+# Creating a graph that looks at the distribution of age groups in the study 
+ggplot(data=BellsPalsyData, aes(x=agegroup))+
+  geom_bar(binwidth = 5, color="black", fill="blue")+
+  theme_classic()+
+  labs(title = "Frequency of Age Groups", x = "Age Group", y = "Frequency") 
+
+# The House–Brackmann score is a score to grade the degree of nerve damage in a facial nerve palsy
+# Looking at the most common time frame between the onset of symptoms and start of treatment
+Mode_BP_Data<- Mode(BellsPalsyData$Time.between.onset.of.symptoms.and.start.of.treatment)
+Mode_BP_Data
+
+# Creating an additional column that looks the difference in recovery from baseline compared to 9 months of treatment
+BellsPalsyData['difference']= BellsPalsyData$Baseline.Score.on.House.Brackmann.scale
+-BellsPalsyData$X9.Month.Score.on.House.Brackmann.scale
+
+# Creating a graphical representation of the difference between the ending score on the House Brackmann scale and the starting score
+ggplot(data=BellsPalsyData, aes(x=difference))+
+  geom_bar(binwidth = 10, color="black", fill="green")+
+  theme_classic()+
+  labs(title = "House Brackmann Score 9 Months After Initial Score", x = "House Brackmann Score", y = "Frequency") 
+
+
+# Getting summary statistics by treatment group 
+initial_summ_stats_by_treatment_group<-as.data.frame(
+  BellsPalsyData|>
+    group_by(Treatment.Group)|>
+     summarise(mean_bs= mean(Baseline.Score.on.House.Brackmann.scale),
+              median_bs= median(Baseline.Score.on.House.Brackmann.scale),
+              mode_bs= Mode(Baseline.Score.on.House.Brackmann.scale),
+              min_bs= min(Baseline.Score.on.House.Brackmann.scale),
+              max_bs= max(Baseline.Score.on.House.Brackmann.scale),
+              sd_bs= sd(Baseline.Score.on.House.Brackmann.scale) ))
+initial_summ_stats_by_treatment_group
+nine_summ_stats_by_treatment_group<-as.data.frame(
+  BellsPalsyData|>
+    group_by(Treatment.Group)|>
+     summarise(mean_9s= mean(X9.Month.Score.on.House.Brackmann.scale),
+              median_9s= median(X9.Month.Score.on.House.Brackmann.scale),
+              mode_9s= Mode(X9.Month.Score.on.House.Brackmann.scale),
+              min_9s= min(X9.Month.Score.on.House.Brackmann.scale),
+              max_9s= max(X9.Month.Score.on.House.Brackmann.scale),
+              sd_9s= sd(X9.Month.Score.on.House.Brackmann.scale) ))
+nine_summ_stats_by_treatment_group
+
+# Looking at the difference in means across treatment groups from the initial score to the 9 month score 
+nine_summ_stats_by_treatment_group$mean_9s-initial_summ_stats_by_treatment_group$mean_bs
+
+```
+
+
+
